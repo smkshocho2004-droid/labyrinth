@@ -1,0 +1,1937 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ラビリンス - そらまる農場</title>
+<link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=Yusei+Magic&family=Shippori+Mincho:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --paper: #f4ecd8;
+    --paper-dark: #e8dcc0;
+    --ink: #2b2417;
+    --ink-soft: #5a4d35;
+    --ink-faded: #8a7a5a;
+    --red: #b8312f;
+    --blue: #2a4d8e;
+    --grid-line: rgba(43, 36, 23, 0.18);
+    --shadow: rgba(43, 36, 23, 0.15);
+  }
+
+  html, body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Klee One', 'Hiragino Maru Gothic ProN', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* 紙の質感 */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(ellipse at 20% 30%, rgba(180, 150, 100, 0.08), transparent 50%),
+      radial-gradient(ellipse at 80% 70%, rgba(160, 130, 90, 0.06), transparent 50%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.25 0 0 0 0 0.15 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .container {
+    position: relative;
+    z-index: 2;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 16px 60px;
+  }
+
+  /* ヘッダー */
+  header {
+    text-align: center;
+    margin-bottom: 28px;
+    position: relative;
+  }
+
+  h1 {
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 700;
+    font-size: clamp(2.2rem, 6vw, 3.4rem);
+    letter-spacing: 0.15em;
+    color: var(--ink);
+    position: relative;
+    display: inline-block;
+    padding: 0 20px;
+  }
+
+  h1::before, h1::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 40px;
+    height: 2px;
+    background: var(--ink-soft);
+    transform: translateY(-50%);
+  }
+  h1::before { right: 100%; }
+  h1::after { left: 100%; }
+
+  .subtitle {
+    font-family: 'Yusei Magic', sans-serif;
+    color: var(--ink-faded);
+    font-size: 0.95rem;
+    margin-top: 6px;
+    letter-spacing: 0.1em;
+  }
+
+  /* パネル共通 */
+  .panel {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+    padding: 24px;
+    box-shadow: 4px 4px 0 var(--ink-soft), 8px 8px 20px var(--shadow);
+    position: relative;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px dashed var(--ink-faded);
+    border-radius: 2px;
+    pointer-events: none;
+  }
+
+  /* 画面切り替え */
+  .screen { display: none; animation: fadeIn 0.4s ease; }
+  .screen.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* メニュー画面 */
+  .menu-grid {
+    display: grid;
+    gap: 16px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .menu-btn {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    color: var(--ink);
+    font-family: 'Klee One', sans-serif;
+    font-weight: 600;
+    font-size: 1.15rem;
+    padding: 18px 24px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: 3px 3px 0 var(--ink-soft);
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .menu-btn:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 var(--ink-soft);
+    background: var(--paper-dark);
+  }
+
+  .menu-btn:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--ink-soft);
+  }
+
+  .menu-btn .icon {
+    font-size: 1.6rem;
+    flex-shrink: 0;
+  }
+
+  .menu-btn .desc {
+    font-size: 0.82rem;
+    color: var(--ink-faded);
+    font-weight: 400;
+    margin-top: 2px;
+  }
+
+  /* セットアップ画面 */
+  .setup-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .setup-label {
+    font-weight: 600;
+    font-size: 1.05rem;
+  }
+
+  .wall-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .wall-control button {
+    width: 38px;
+    height: 38px;
+    border: 2px solid var(--ink);
+    background: var(--paper);
+    font-size: 1.3rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 var(--ink-soft);
+    transition: all 0.1s;
+  }
+
+  .wall-control button:hover {
+    background: var(--paper-dark);
+  }
+
+  .wall-control button:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--ink-soft);
+  }
+
+  .wall-count {
+    font-size: 1.5rem;
+    font-weight: 700;
+    min-width: 50px;
+    text-align: center;
+    font-family: 'Yusei Magic', sans-serif;
+  }
+
+  .wall-hint {
+    font-size: 0.85rem;
+    color: var(--ink-faded);
+    margin-top: -8px;
+    margin-bottom: 16px;
+  }
+
+  /* プレイヤー名 */
+  .player-name-input {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    align-items: center;
+  }
+
+  .player-name-input label {
+    min-width: 100px;
+    font-weight: 600;
+  }
+
+  .player-name-input input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 2px solid var(--ink);
+    background: var(--paper);
+    font-family: 'Klee One', sans-serif;
+    font-size: 1rem;
+    color: var(--ink);
+    box-shadow: inset 2px 2px 0 var(--shadow);
+  }
+
+  .player-name-input input:focus {
+    outline: none;
+    background: #fff8e8;
+  }
+
+  .action-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border: 2px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Klee One', sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 var(--ink-soft);
+    transition: all 0.1s;
+  }
+
+  .btn:hover { background: var(--paper-dark); transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink-soft); }
+  .btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink-soft); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: 3px 3px 0 var(--ink-soft); }
+
+  .btn-primary { background: var(--ink); color: var(--paper); }
+  .btn-primary:hover { background: var(--ink-soft); }
+
+  .btn-danger { color: var(--red); border-color: var(--red); box-shadow: 3px 3px 0 rgba(184, 49, 47, 0.4); }
+  .btn-danger:hover { background: rgba(184, 49, 47, 0.08); }
+
+  /* ゲーム画面レイアウト */
+  .game-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  @media (min-width: 880px) {
+    .game-layout {
+      grid-template-columns: 1fr 280px;
+    }
+  }
+
+  .game-info {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    padding: 16px;
+    box-shadow: 3px 3px 0 var(--ink-soft);
+    position: relative;
+  }
+
+  .turn-indicator {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    border: 2px solid var(--ink);
+    background: var(--paper-dark);
+    text-align: center;
+  }
+
+  .turn-indicator.red { color: var(--red); border-color: var(--red); }
+  .turn-indicator.blue { color: var(--blue); border-color: var(--blue); }
+
+  .info-line {
+    margin: 8px 0;
+    font-size: 0.95rem;
+  }
+
+  .info-line strong { font-family: 'Yusei Magic', sans-serif; }
+
+  .legend {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--ink-faded);
+    font-size: 0.85rem;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0;
+  }
+
+  .legend-swatch {
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--ink);
+    flex-shrink: 0;
+  }
+
+  /* 盤面 */
+  .board-wrap {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    padding: 24px;
+    box-shadow: 4px 4px 0 var(--ink-soft);
+    position: relative;
+  }
+
+  .board-title {
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+
+  .board-svg-wrap {
+    width: 100%;
+    aspect-ratio: 1;
+    max-width: 560px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  svg.board {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: crosshair;
+    user-select: none;
+  }
+
+  .cell-bg {
+    fill: var(--paper);
+    stroke: var(--grid-line);
+    stroke-width: 0.5;
+  }
+
+  .cell-hover {
+    fill: rgba(255, 200, 100, 0.25);
+  }
+
+  .cell-clickable:hover .cell-bg {
+    fill: rgba(255, 200, 100, 0.2);
+  }
+
+  .wall-line {
+    stroke-linecap: round;
+    stroke-width: 4;
+  }
+
+  .wall-line.mine { stroke: var(--ink); }
+  .wall-line.revealed { stroke: var(--red); stroke-dasharray: none; }
+  .wall-line.preview { stroke: var(--ink-soft); stroke-width: 5; opacity: 0.6; }
+  .wall-line.hover-target { stroke: rgba(184, 49, 47, 0.4); stroke-width: 6; }
+
+  .marker-text {
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+  }
+
+  .player-token {
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .trail-dot {
+    fill: var(--ink-faded);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .fail-x {
+    stroke: var(--red);
+    stroke-width: 3;
+    stroke-linecap: round;
+    pointer-events: none;
+    animation: failPop 0.4s ease;
+  }
+
+  @keyframes failPop {
+    0% { opacity: 0; transform: scale(0); }
+    50% { opacity: 1; transform: scale(1.3); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  /* メッセージ */
+  .message {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border: 2px dashed var(--ink-soft);
+    background: rgba(255, 248, 232, 0.6);
+    font-family: 'Yusei Magic', sans-serif;
+    font-size: 0.95rem;
+    min-height: 44px;
+    text-align: center;
+  }
+
+  .message.success { border-color: #4a7c4e; color: #2d5530; background: rgba(180, 220, 180, 0.3); }
+  .message.fail { border-color: var(--red); color: var(--red); background: rgba(184, 49, 47, 0.08); }
+
+  /* セットアップ専用 */
+  .setup-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    background: var(--paper-dark);
+    border: 2px solid var(--ink);
+    font-weight: 600;
+  }
+
+  .setup-mode-toggle {
+    display: inline-flex;
+    border: 2px solid var(--ink);
+    margin-bottom: 12px;
+  }
+
+  .setup-mode-toggle button {
+    padding: 8px 16px;
+    border: none;
+    background: var(--paper);
+    cursor: pointer;
+    font-family: 'Klee One', sans-serif;
+    font-weight: 600;
+  }
+
+  .setup-mode-toggle button.active {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  /* 受け渡し画面 */
+  .handoff {
+    text-align: center;
+    padding: 40px 20px;
+  }
+
+  .handoff h2 {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 1.8rem;
+    margin-bottom: 16px;
+  }
+
+  .handoff p {
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+    margin-bottom: 24px;
+    line-height: 1.7;
+  }
+
+  /* 勝利画面 */
+  .victory {
+    text-align: center;
+    padding: 40px 20px;
+  }
+
+  .victory h2 {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+  }
+
+  .victory .winner-name {
+    font-size: 1.4rem;
+    color: var(--red);
+    font-weight: 700;
+    margin-bottom: 24px;
+  }
+
+  .victory .stats {
+    display: inline-block;
+    text-align: left;
+    background: var(--paper-dark);
+    padding: 16px 24px;
+    border: 2px solid var(--ink);
+    margin: 20px 0;
+  }
+
+  /* スタンプ */
+  .stamp {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    border: 3px double var(--red);
+    color: var(--red);
+    padding: 4px 10px;
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    transform: rotate(-8deg);
+    opacity: 0.7;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(43, 36, 23, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    box-shadow: 6px 6px 0 var(--ink-soft);
+    padding: 28px;
+    max-width: 420px;
+    width: 100%;
+    position: relative;
+  }
+
+  .modal h3 {
+    font-family: 'Shippori Mincho', serif;
+    margin-bottom: 12px;
+  }
+
+  /* ヘルプテキスト */
+  details.help {
+    margin-top: 16px;
+    border: 1px dashed var(--ink-faded);
+    padding: 12px;
+    font-size: 0.9rem;
+  }
+
+  details.help summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+
+  details.help[open] summary { margin-bottom: 8px; }
+
+  details.help ul {
+    padding-left: 20px;
+    line-height: 1.7;
+  }
+
+  /* フッター */
+  .site-footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--ink-faded);
+    text-align: center;
+    color: var(--ink-faded);
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+  }
+
+  .footer-brand {
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 700;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+  }
+
+  .footer-url {
+    font-family: 'Yusei Magic', sans-serif;
+    font-size: 0.8rem;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>ラビリンス</h1>
+    <div class="subtitle">— 紙と鉛筆で、迷宮を競う —</div>
+  </header>
+
+  <!-- メニュー画面 -->
+  <div class="screen active" id="screen-menu">
+    <div class="panel">
+      <div class="menu-grid">
+        <button class="menu-btn" data-mode="pvp">
+          <span class="icon">👥</span>
+          <div>
+            <div>二人で対戦</div>
+            <div class="desc">同じ端末で交互に操作します</div>
+          </div>
+        </button>
+        <button class="menu-btn" data-mode="pvc-easy">
+          <span class="icon">🤖</span>
+          <div>
+            <div>コンピューター（やさしい）</div>
+            <div class="desc">壁配置はランダム、移動も気まま</div>
+          </div>
+        </button>
+        <button class="menu-btn" data-mode="pvc-normal">
+          <span class="icon">🤖</span>
+          <div>
+            <div>コンピューター（ふつう）</div>
+            <div class="desc">ゴール周辺を守り、賢く進みます</div>
+          </div>
+        </button>
+        <button class="menu-btn" data-mode="pvc-hard">
+          <span class="icon">👹</span>
+          <div>
+            <div>コンピューター（つよい）</div>
+            <div class="desc">迷宮を最大化し、効率的に攻めます</div>
+          </div>
+        </button>
+      </div>
+
+      <details class="help" style="margin-top:24px;">
+        <summary>ルールをみる</summary>
+        <ul>
+          <li>6×6のマスに、二人がそれぞれ壁を配置して迷宮をつくります</li>
+          <li>壁の数は事前に決めて、双方が同数配置します（推奨15〜20本）</li>
+          <li>スタートとゴールが壁で完全に分断されてはいけません</li>
+          <li>自分の番は、隣接マスへの移動を宣言します</li>
+          <li>壁が無ければ移動成功で続けて宣言できます</li>
+          <li>壁があれば失敗で相手の番。壁の位置が双方に明らかになります</li>
+          <li>先にゴールへたどり着いた方が勝ちです</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+
+  <!-- 設定画面 -->
+  <div class="screen" id="screen-config">
+    <div class="panel">
+      <h2 style="font-family:'Shippori Mincho',serif; margin-bottom:20px;">対戦設定</h2>
+
+      <div id="player-names">
+        <div class="player-name-input">
+          <label>プレイヤー1</label>
+          <input type="text" id="p1-name" value="あなた" maxlength="12">
+        </div>
+        <div class="player-name-input" id="p2-name-row">
+          <label>プレイヤー2</label>
+          <input type="text" id="p2-name" value="相手" maxlength="12">
+        </div>
+      </div>
+
+      <div class="setup-row" style="margin-top:24px;">
+        <div class="setup-label">壁の数（一人あたり）</div>
+        <div class="wall-control">
+          <button id="wall-minus">−</button>
+          <div class="wall-count" id="wall-count">17</div>
+          <button id="wall-plus">＋</button>
+        </div>
+      </div>
+      <div class="wall-hint">推奨: 15〜20本　/　最小: 5本　/　最大: 25本（26本以上だと到達不能マスができる可能性）</div>
+
+      <div class="setup-row">
+        <div class="setup-label">スタート / ゴール</div>
+        <div>
+          <label style="margin-right:12px;"><input type="radio" name="sg-mode" value="fixed" checked> 固定（左下→右上）</label>
+          <label><input type="radio" name="sg-mode" value="manual"> 自分で選ぶ</label>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn" onclick="goto('menu')">← もどる</button>
+        <button class="btn btn-primary" id="start-setup-btn">迷宮づくりへ →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- スタート/ゴール選択画面 -->
+  <div class="screen" id="screen-sgpick">
+    <div class="panel">
+      <div class="setup-info">
+        <div><span id="sgpick-current-player">プレイヤー1</span>のスタートとゴール</div>
+        <div id="sgpick-step-label">①スタートを選択</div>
+      </div>
+
+      <div style="font-size:0.9rem; color:var(--ink-soft); margin-bottom:12px; line-height:1.6;">
+        💡 好きなマスをクリックして、スタート(S)とゴール(G)を決めてください。<br>
+        壁の置き方次第でどんな配置でも迷宮になります。近くに置いて短距離勝負もあり！
+      </div>
+
+      <div class="board-svg-wrap">
+        <svg class="board" id="sgpick-board" viewBox="0 0 600 600"></svg>
+      </div>
+
+      <div class="message" id="sgpick-message">スタート(S)にしたいマスをクリック</div>
+
+      <div class="action-row">
+        <button class="btn" id="sgpick-reset-btn">やり直す</button>
+        <button class="btn btn-primary" id="sgpick-confirm-btn" disabled>決定 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 壁配置画面 -->
+  <div class="screen" id="screen-setup">
+    <div class="panel">
+      <div class="setup-info">
+        <div><span id="setup-current-player">プレイヤー1</span>の迷宮づくり</div>
+        <div>残り壁: <span id="walls-remaining">17</span> / <span id="walls-total">17</span></div>
+      </div>
+
+      <div style="font-size:0.9rem; color:var(--ink-soft); margin-bottom:12px; line-height:1.6;">
+        💡 マスとマスの<strong>境界</strong>をクリックすると壁を置けます。もう一度クリックで撤去。<br>
+        スタートとゴールが分断されないよう、置けない位置はガードされます。
+      </div>
+
+      <div class="board-svg-wrap">
+        <svg class="board" id="setup-board" viewBox="0 0 600 600"></svg>
+      </div>
+
+      <div class="message" id="setup-message">境界線をクリックして壁を置いてください</div>
+
+      <div class="action-row">
+        <button class="btn btn-danger" id="setup-clear-btn">すべて消す</button>
+        <button class="btn" id="setup-random-btn">ランダム配置</button>
+        <button class="btn btn-primary" id="setup-confirm-btn" disabled>配置完了 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 受け渡し画面（PvP用） -->
+  <div class="screen" id="screen-handoff">
+    <div class="panel handoff">
+      <h2 id="handoff-title">プレイヤー2に交代</h2>
+      <p id="handoff-message">
+        端末を相手に渡してください。<br>
+        相手の迷宮を見ないようにご注意を。
+      </p>
+      <button class="btn btn-primary" id="handoff-continue-btn">準備ができた →</button>
+    </div>
+  </div>
+
+  <!-- ゲーム画面 -->
+  <div class="screen" id="screen-game">
+    <div class="game-layout">
+      <div>
+        <div class="board-wrap">
+          <div class="board-title" id="game-board-title">— 相手の迷宮 —</div>
+          <div class="board-svg-wrap">
+            <svg class="board" id="game-board" viewBox="0 0 600 600"></svg>
+          </div>
+          <div class="message" id="game-message">隣接するマスをクリックして移動を宣言</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="game-info">
+          <div class="turn-indicator" id="turn-indicator">プレイヤー1のターン</div>
+
+          <div class="info-line">手数: <strong id="move-count">0</strong></div>
+          <div class="info-line">壁にぶつかった回数: <strong id="fail-count">0</strong></div>
+
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-swatch" style="background: rgba(184, 49, 47, 0.2); border-color: var(--red);"></div>
+              <span>S = スタート</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background: rgba(42, 77, 142, 0.2); border-color: var(--blue);"></div>
+              <span>G = ゴール</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background: var(--red);"></div>
+              <span>判明した壁</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background: var(--ink-faded); opacity: 0.4;"></div>
+              <span>通過した跡</span>
+            </div>
+          </div>
+
+          <div style="margin-top:16px; display:flex; flex-direction:column; gap:8px;">
+            <button class="btn" id="game-restart-btn">最初から</button>
+            <button class="btn btn-danger" id="game-quit-btn">投了</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 勝利画面 -->
+  <div class="screen" id="screen-victory">
+    <div class="panel victory">
+      <div class="stamp">完</div>
+      <h2>🏆 勝者</h2>
+      <div class="winner-name" id="winner-name">プレイヤー1</div>
+
+      <div class="stats">
+        <div>移動回数: <strong id="stat-moves">0</strong></div>
+        <div>壁にぶつかった: <strong id="stat-fails">0</strong></div>
+        <div>所要ターン: <strong id="stat-turns">0</strong></div>
+      </div>
+
+      <div style="margin-top:16px; font-size:0.95rem; color:var(--ink-soft);" id="victory-comment"></div>
+
+      <div style="margin-top:24px;">
+        <div class="board-svg-wrap" style="max-width:480px;">
+          <svg class="board" id="victory-board" viewBox="0 0 600 600"></svg>
+        </div>
+        <div style="font-size:0.85rem; color:var(--ink-faded); margin-top:8px;">↑ 完成した迷宮（両者の壁を表示）</div>
+      </div>
+
+      <div class="action-row" style="justify-content:center;">
+        <button class="btn" onclick="goto('menu')">メニューへ</button>
+        <button class="btn btn-primary" id="victory-rematch-btn">もう一勝負 →</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-brand">そらまる農場</div>
+  </footer>
+</div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">確認</h3>
+    <p id="modal-body" style="margin-bottom:20px; line-height:1.6;"></p>
+    <div class="action-row" style="margin-top:0;">
+      <button class="btn" id="modal-cancel">キャンセル</button>
+      <button class="btn btn-primary" id="modal-ok">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==========================================================================
+//  ラビリンス — 6x6マス迷宮対戦ゲーム
+// ==========================================================================
+
+const N = 6;            // 盤面サイズ
+const SVG_SIZE = 600;
+const PADDING = 30;
+const CELL = (SVG_SIZE - PADDING * 2) / N;
+
+// ゲームの状態
+const state = {
+  mode: 'pvp',                // 'pvp' | 'pvc-easy' | 'pvc-normal' | 'pvc-hard'
+  wallCount: 17,
+  players: [
+    { name: 'プレイヤー1', isAI: false, walls: { h: [], v: [] }, start: null, goal: null, color: 'red' },
+    { name: 'プレイヤー2', isAI: false, walls: { h: [], v: [] }, start: null, goal: null, color: 'blue' },
+  ],
+  setupPlayerIdx: 0,           // 配置中のプレイヤー
+  sgPickPlayerIdx: 0,          // スタート/ゴール選択中のプレイヤー
+  sgPickStep: 'start',         // 'start' | 'goal'
+  sgPickTemp: { start: null, goal: null },
+  currentPlayer: 0,            // 現在のターン
+  // 各プレイヤーの「相手の迷宮上での」位置・履歴・判明した壁
+  runs: [
+    { pos: null, trail: [], knownWalls: { h: [], v: [] }, moveCount: 0, failCount: 0, turnCount: 0, finished: false },
+    { pos: null, trail: [], knownWalls: { h: [], v: [] }, moveCount: 0, failCount: 0, turnCount: 0, finished: false },
+  ],
+  sgMode: 'fixed',
+  failMarker: null, // {r, c, dir} 一時的に表示する×印
+};
+
+// ==========================================================================
+//  壁の表現
+//  h壁: マス(r,c)の上辺 → h[r][c] (r: 0..N, c: 0..N-1)  ※ r=0 と r=N は外周
+//  v壁: マス(r,c)の左辺 → v[r][c] (r: 0..N-1, c: 0..N)  ※ c=0 と c=N は外周
+//  内部の壁のみ管理: h は r=1..N-1、v は c=1..N-1
+// ==========================================================================
+
+function emptyWalls() {
+  return { h: [], v: [] }; // 配列要素: {r, c}
+}
+
+function hasWall(walls, type, r, c) {
+  return walls[type].some(w => w.r === r && w.c === c);
+}
+
+function addWall(walls, type, r, c) {
+  if (!hasWall(walls, type, r, c)) walls[type].push({ r, c });
+}
+
+function removeWall(walls, type, r, c) {
+  walls[type] = walls[type].filter(w => !(w.r === r && w.c === c));
+}
+
+function wallCount(walls) {
+  return walls.h.length + walls.v.length;
+}
+
+// 隣接マス間の壁チェック (from→to の移動)
+function isWallBetween(walls, fromR, fromC, toR, toC) {
+  if (toR === fromR && toC === fromC + 1) return hasWall(walls, 'v', fromR, fromC + 1);
+  if (toR === fromR && toC === fromC - 1) return hasWall(walls, 'v', fromR, fromC);
+  if (toR === fromR + 1 && toC === fromC) return hasWall(walls, 'h', fromR + 1, fromC);
+  if (toR === fromR - 1 && toC === fromC) return hasWall(walls, 'h', fromR, fromC);
+  return false;
+}
+
+// BFSで到達可能性チェック
+function bfsReachable(walls, startR, startC, goalR, goalC) {
+  const visited = Array.from({ length: N }, () => new Array(N).fill(false));
+  const queue = [[startR, startC]];
+  visited[startR][startC] = true;
+  while (queue.length) {
+    const [r, c] = queue.shift();
+    if (r === goalR && c === goalC) return true;
+    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
+      if (visited[nr][nc]) continue;
+      if (isWallBetween(walls, r, c, nr, nc)) continue;
+      visited[nr][nc] = true;
+      queue.push([nr, nc]);
+    }
+  }
+  return false;
+}
+
+// BFSで最短経路の長さを返す（到達不能なら-1）
+function bfsDistance(walls, startR, startC, goalR, goalC) {
+  const dist = Array.from({ length: N }, () => new Array(N).fill(-1));
+  dist[startR][startC] = 0;
+  const queue = [[startR, startC]];
+  while (queue.length) {
+    const [r, c] = queue.shift();
+    if (r === goalR && c === goalC) return dist[r][c];
+    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
+      if (dist[nr][nc] !== -1) continue;
+      if (isWallBetween(walls, r, c, nr, nc)) continue;
+      dist[nr][nc] = dist[r][c] + 1;
+      queue.push([nr, nc]);
+    }
+  }
+  return -1;
+}
+
+// BFS最短経路復元
+function bfsPath(walls, startR, startC, goalR, goalC) {
+  const prev = Array.from({ length: N }, () => new Array(N).fill(null));
+  const visited = Array.from({ length: N }, () => new Array(N).fill(false));
+  visited[startR][startC] = true;
+  const queue = [[startR, startC]];
+  while (queue.length) {
+    const [r, c] = queue.shift();
+    if (r === goalR && c === goalC) {
+      const path = [];
+      let cur = [r, c];
+      while (cur) {
+        path.push(cur);
+        cur = prev[cur[0]][cur[1]];
+      }
+      return path.reverse();
+    }
+    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
+      if (visited[nr][nc]) continue;
+      if (isWallBetween(walls, r, c, nr, nc)) continue;
+      visited[nr][nc] = true;
+      prev[nr][nc] = [r, c];
+      queue.push([nr, nc]);
+    }
+  }
+  return null;
+}
+
+// ==========================================================================
+//  画面遷移
+// ==========================================================================
+
+function goto(screenName) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + screenName).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ==========================================================================
+//  メニュー
+// ==========================================================================
+
+document.querySelectorAll('.menu-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.mode = btn.dataset.mode;
+    initConfig();
+    goto('config');
+  });
+});
+
+function initConfig() {
+  // CPU対戦時はプレイヤー2の名前入力欄を隠す
+  const p2Row = document.getElementById('p2-name-row');
+  if (state.mode === 'pvp') {
+    p2Row.style.display = 'flex';
+    document.getElementById('p1-name').value = 'プレイヤー1';
+    document.getElementById('p2-name').value = 'プレイヤー2';
+  } else {
+    p2Row.style.display = 'none';
+    document.getElementById('p1-name').value = 'あなた';
+    const aiNames = { 'pvc-easy': 'CPU・初級', 'pvc-normal': 'CPU・中級', 'pvc-hard': 'CPU・上級' };
+    document.getElementById('p2-name').value = aiNames[state.mode];
+  }
+}
+
+// 壁数調整
+document.getElementById('wall-minus').addEventListener('click', () => {
+  state.wallCount = Math.max(5, state.wallCount - 1);
+  document.getElementById('wall-count').textContent = state.wallCount;
+});
+document.getElementById('wall-plus').addEventListener('click', () => {
+  state.wallCount = Math.min(25, state.wallCount + 1);
+  document.getElementById('wall-count').textContent = state.wallCount;
+});
+
+document.getElementById('start-setup-btn').addEventListener('click', () => {
+  state.players[0].name = document.getElementById('p1-name').value.trim() || 'プレイヤー1';
+  state.players[1].name = document.getElementById('p2-name').value.trim() || 'プレイヤー2';
+  state.players[0].isAI = false;
+  state.players[1].isAI = state.mode !== 'pvp';
+  state.sgMode = document.querySelector('input[name="sg-mode"]:checked').value;
+
+  // 壁を初期化
+  state.players.forEach(p => { p.walls = emptyWalls(); p.start = null; p.goal = null; });
+  document.getElementById('walls-total').textContent = state.wallCount;
+
+  if (state.sgMode === 'fixed') {
+    // 固定: 左下→右上
+    state.players.forEach(p => {
+      p.start = { r: N - 1, c: 0 };
+      p.goal  = { r: 0, c: N - 1 };
+    });
+    // CPU対戦の場合、CPUの壁を自動配置
+    if (state.players[1].isAI) aiPlaceWalls(1);
+    state.setupPlayerIdx = 0;
+    startSetupForPlayer(0);
+  } else {
+    // 手動: スタート/ゴール選択画面へ
+    // AI の場合は自動でランダム選択
+    if (state.players[1].isAI) {
+      const sg = randomStartGoal();
+      state.players[1].start = sg.start;
+      state.players[1].goal = sg.goal;
+      aiPlaceWalls(1);
+    }
+    state.sgPickPlayerIdx = 0;
+    startSGPickForPlayer(0);
+  }
+});
+
+// スタート/ゴールをランダムに決める（AI用）
+function randomStartGoal() {
+  const corners = [
+    { r: 0, c: 0 }, { r: 0, c: N - 1 }, { r: N - 1, c: 0 }, { r: N - 1, c: N - 1 }
+  ];
+  const start = corners[Math.floor(Math.random() * corners.length)];
+  const goal = { r: N - 1 - start.r, c: N - 1 - start.c };
+  return { start, goal };
+}
+
+function randomCorner() {
+  const corners = [
+    { r: 0, c: 0 }, { r: 0, c: N - 1 }, { r: N - 1, c: 0 }, { r: N - 1, c: N - 1 }
+  ];
+  return corners[Math.floor(Math.random() * corners.length)];
+}
+
+// ==========================================================================
+//  スタート / ゴール選択画面
+// ==========================================================================
+
+function startSGPickForPlayer(idx) {
+  state.sgPickPlayerIdx = idx;
+  // AIプレイヤーはスキップ（すでにstart/goal設定済み）
+  if (state.players[idx].isAI) {
+    sgPickNextOrSetup();
+    return;
+  }
+  state.sgPickStep = 'start';
+  state.sgPickTemp = { start: null, goal: null };
+  document.getElementById('sgpick-current-player').textContent = state.players[idx].name;
+  document.getElementById('sgpick-step-label').textContent = '①スタートを選択';
+  document.getElementById('sgpick-message').textContent = 'スタート(S)にしたいマスをクリック';
+  document.getElementById('sgpick-message').className = 'message';
+  document.getElementById('sgpick-confirm-btn').disabled = true;
+  renderSGPickBoard();
+  goto('sgpick');
+}
+
+function renderSGPickBoard() {
+  const svg = document.getElementById('sgpick-board');
+  svg.innerHTML = renderBoardSVG({
+    walls: emptyWalls(),
+    showWalls: false,
+    start: state.sgPickTemp.start,
+    goal: state.sgPickTemp.goal,
+    interactive: 'cells',
+  });
+  // セルクリックハンドラ
+  svg.querySelectorAll('.cell-clickable').forEach(el => {
+    el.addEventListener('click', () => {
+      const r = parseInt(el.dataset.r);
+      const c = parseInt(el.dataset.c);
+      handleSGPickCellClick(r, c);
+    });
+  });
+}
+
+function handleSGPickCellClick(r, c) {
+  const msg = document.getElementById('sgpick-message');
+  if (state.sgPickStep === 'start') {
+    state.sgPickTemp.start = { r, c };
+    state.sgPickStep = 'goal';
+    document.getElementById('sgpick-step-label').textContent = '②ゴールを選択';
+    msg.textContent = 'ゴール(G)にしたいマスをクリック';
+    msg.className = 'message success';
+    renderSGPickBoard();
+  } else {
+    // goal選択
+    const s = state.sgPickTemp.start;
+    // 同じマス不可
+    if (s.r === r && s.c === c) {
+      msg.textContent = 'スタートと同じマスは選べません';
+      msg.className = 'message fail';
+      return;
+    }
+    state.sgPickTemp.goal = { r, c };
+    msg.textContent = '配置が決まりました。「決定」を押して進んでください';
+    msg.className = 'message success';
+    document.getElementById('sgpick-confirm-btn').disabled = false;
+    renderSGPickBoard();
+  }
+}
+
+// やり直すボタン
+document.getElementById('sgpick-reset-btn').addEventListener('click', () => {
+  state.sgPickStep = 'start';
+  state.sgPickTemp = { start: null, goal: null };
+  document.getElementById('sgpick-step-label').textContent = '①スタートを選択';
+  document.getElementById('sgpick-message').textContent = 'スタート(S)にしたいマスをクリック';
+  document.getElementById('sgpick-message').className = 'message';
+  document.getElementById('sgpick-confirm-btn').disabled = true;
+  renderSGPickBoard();
+});
+
+// 決定ボタン
+document.getElementById('sgpick-confirm-btn').addEventListener('click', () => {
+  const idx = state.sgPickPlayerIdx;
+  state.players[idx].start = state.sgPickTemp.start;
+  state.players[idx].goal = state.sgPickTemp.goal;
+  sgPickNextOrSetup();
+});
+
+function sgPickNextOrSetup() {
+  const next = state.sgPickPlayerIdx + 1;
+  if (next < state.players.length) {
+    // 次のプレイヤーの番
+    if (state.players[next].isAI) {
+      // AIはスキップして、次の段階（壁配置）へ
+      state.setupPlayerIdx = 0;
+      startSetupForPlayer(0);
+    } else if (state.mode === 'pvp') {
+      // 受け渡し
+      document.getElementById('handoff-title').textContent = `${state.players[next].name} の番です`;
+      document.getElementById('handoff-message').innerHTML = `スタートとゴールを選びます。<br>端末を相手に渡してください。`;
+      document.getElementById('handoff-continue-btn').onclick = () => {
+        startSGPickForPlayer(next);
+      };
+      goto('handoff');
+    }
+  } else {
+    // 全員のスタート/ゴール決定済み → 壁配置へ
+    state.setupPlayerIdx = 0;
+    startSetupForPlayer(0);
+  }
+}
+
+// ==========================================================================
+//  壁配置（人間用）
+// ==========================================================================
+
+function startSetupForPlayer(idx) {
+  state.setupPlayerIdx = idx;
+  // CPU の場合はスキップ
+  if (state.players[idx].isAI) {
+    setupNextOrStart();
+    return;
+  }
+  document.getElementById('setup-current-player').textContent = state.players[idx].name;
+  updateWallsRemaining();
+  document.getElementById('setup-message').textContent = '境界線をクリックして壁を置いてください';
+  document.getElementById('setup-message').className = 'message';
+  renderSetupBoard();
+  goto('setup');
+}
+
+function updateWallsRemaining() {
+  const used = wallCount(state.players[state.setupPlayerIdx].walls);
+  const remaining = state.wallCount - used;
+  document.getElementById('walls-remaining').textContent = remaining;
+  document.getElementById('setup-confirm-btn').disabled = remaining !== 0;
+}
+
+function renderSetupBoard() {
+  const svg = document.getElementById('setup-board');
+  const player = state.players[state.setupPlayerIdx];
+  svg.innerHTML = renderBoardSVG({
+    walls: player.walls,
+    showWalls: true,
+    start: player.start,
+    goal: player.goal,
+    interactive: 'walls',
+  });
+  attachSetupHandlers(svg);
+}
+
+function attachSetupHandlers(svg) {
+  // 壁の境界（クリック領域）をハンドリング
+  svg.querySelectorAll('.wall-target').forEach(el => {
+    el.addEventListener('click', (e) => {
+      const type = el.dataset.type;
+      const r = parseInt(el.dataset.r);
+      const c = parseInt(el.dataset.c);
+      const player = state.players[state.setupPlayerIdx];
+      const msg = document.getElementById('setup-message');
+
+      if (hasWall(player.walls, type, r, c)) {
+        // 撤去
+        removeWall(player.walls, type, r, c);
+        msg.textContent = '壁を撤去しました';
+        msg.className = 'message';
+      } else {
+        // 配置
+        if (wallCount(player.walls) >= state.wallCount) {
+          msg.textContent = `これ以上置けません（上限 ${state.wallCount} 本）`;
+          msg.className = 'message fail';
+          return;
+        }
+        // 仮置きして経路チェック
+        addWall(player.walls, type, r, c);
+        if (!bfsReachable(player.walls, player.start.r, player.start.c, player.goal.r, player.goal.c)) {
+          // ダメ
+          removeWall(player.walls, type, r, c);
+          msg.textContent = 'スタートとゴールが分断されてしまいます';
+          msg.className = 'message fail';
+          return;
+        }
+        msg.textContent = '壁を配置しました';
+        msg.className = 'message success';
+      }
+      updateWallsRemaining();
+      renderSetupBoard();
+    });
+  });
+}
+
+// すべて消す
+document.getElementById('setup-clear-btn').addEventListener('click', () => {
+  showModal('全部消す？', '配置した壁をすべて消去します。', () => {
+    state.players[state.setupPlayerIdx].walls = emptyWalls();
+    updateWallsRemaining();
+    renderSetupBoard();
+    document.getElementById('setup-message').textContent = 'リセットしました';
+    document.getElementById('setup-message').className = 'message';
+  });
+});
+
+// ランダム配置
+document.getElementById('setup-random-btn').addEventListener('click', () => {
+  const player = state.players[state.setupPlayerIdx];
+  player.walls = emptyWalls();
+  randomPlaceWalls(player.walls, state.wallCount, player.start, player.goal);
+  updateWallsRemaining();
+  renderSetupBoard();
+  document.getElementById('setup-message').textContent = `ランダムに ${state.wallCount} 本配置しました`;
+  document.getElementById('setup-message').className = 'message success';
+});
+
+// 配置完了
+document.getElementById('setup-confirm-btn').addEventListener('click', () => {
+  setupNextOrStart();
+});
+
+function setupNextOrStart() {
+  const next = state.setupPlayerIdx + 1;
+  if (next < state.players.length) {
+    if (state.players[next].isAI) {
+      // AIは既に配置済み → 直接ゲーム開始
+      startGame();
+    } else if (state.mode === 'pvp') {
+      // PvP: 受け渡し画面
+      document.getElementById('handoff-title').textContent = `${state.players[next].name} の番です`;
+      document.getElementById('handoff-message').innerHTML = `端末を相手に渡してください。<br>相手の迷宮を見ないようにご注意を。`;
+      document.getElementById('handoff-continue-btn').onclick = () => {
+        startSetupForPlayer(next);
+      };
+      goto('handoff');
+    }
+  } else {
+    startGame();
+  }
+}
+
+// ランダム配置のロジック（経路を必ず保つ）
+function randomPlaceWalls(walls, count, start, goal) {
+  const allEdges = [];
+  for (let r = 1; r < N; r++) for (let c = 0; c < N; c++) allEdges.push({ type: 'h', r, c });
+  for (let r = 0; r < N; r++) for (let c = 1; c < N; c++) allEdges.push({ type: 'v', r, c });
+  shuffle(allEdges);
+  for (const e of allEdges) {
+    if (wallCount(walls) >= count) break;
+    addWall(walls, e.type, e.r, e.c);
+    if (!bfsReachable(walls, start.r, start.c, goal.r, goal.c)) {
+      removeWall(walls, e.type, e.r, e.c);
+    }
+  }
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+// ==========================================================================
+//  AI: 壁配置
+// ==========================================================================
+
+function aiPlaceWalls(playerIdx) {
+  const player = state.players[playerIdx];
+  player.walls = emptyWalls();
+
+  if (state.mode === 'pvc-easy') {
+    randomPlaceWalls(player.walls, state.wallCount, player.start, player.goal);
+    return;
+  }
+
+  // normal/hard: ゴール周辺を厚く守る + 道のりを伸ばすように配置
+  const goalR = player.goal.r, goalC = player.goal.c;
+  const startR = player.start.r, startC = player.start.c;
+
+  // 候補エッジを全部列挙し、ゴールへの近さでスコアリング
+  const allEdges = [];
+  for (let r = 1; r < N; r++) for (let c = 0; c < N; c++) allEdges.push({ type: 'h', r, c });
+  for (let r = 0; r < N; r++) for (let c = 1; c < N; c++) allEdges.push({ type: 'v', r, c });
+
+  // 各エッジのスコア = ゴールへのマンハッタン距離が近いほど高評価 + ランダム性
+  allEdges.forEach(e => {
+    let er, ec;
+    if (e.type === 'h') { er = e.r - 0.5; ec = e.c + 0.5; }
+    else { er = e.r + 0.5; ec = e.c - 0.5; }
+    const distGoal = Math.abs(er - goalR) + Math.abs(ec - goalC);
+    const distStart = Math.abs(er - startR) + Math.abs(ec - startC);
+    // ゴール近く優先・スタート近くは避ける
+    e.score = (10 - distGoal) * 2 + distStart * 0.5 + Math.random() * 3;
+  });
+
+  allEdges.sort((a, b) => b.score - a.score);
+
+  const targetCount = state.wallCount;
+  // hard モードは最短経路を伸ばすことを意識
+  const lengthenPath = state.mode === 'pvc-hard';
+
+  for (const e of allEdges) {
+    if (wallCount(player.walls) >= targetCount) break;
+
+    // 仮配置
+    addWall(player.walls, e.type, e.r, e.c);
+
+    // 経路チェック
+    if (!bfsReachable(player.walls, startR, startC, goalR, goalC)) {
+      removeWall(player.walls, e.type, e.r, e.c);
+      continue;
+    }
+
+    // hard: 経路長を意識（短くなる配置は避ける、できれば長くする）
+    if (lengthenPath) {
+      // ベース経路長と比較
+      const newDist = bfsDistance(player.walls, startR, startC, goalR, goalC);
+      // 一定の長さ以上を維持。最低でもマンハッタン距離+α
+      const minDist = Math.abs(startR - goalR) + Math.abs(startC - goalC) + 2;
+      if (newDist < minDist && Math.random() > 0.3) {
+        // たまに採用（多様性のため）
+      }
+    }
+  }
+
+  // 余った場合は強制的にランダム埋め
+  if (wallCount(player.walls) < targetCount) {
+    randomPlaceWalls(player.walls, targetCount, player.start, player.goal);
+  }
+}
+
+// ==========================================================================
+//  ゲーム開始 & 進行
+// ==========================================================================
+
+function startGame() {
+
+
+  // runs 初期化: プレイヤーiは「相手(1-i)の迷宮」を、相手が設定した
+  // スタート/ゴール上で攻略する。これによって配置者の戦略意図が活きる。
+  for (let i = 0; i < 2; i++) {
+    const opp = state.players[1 - i];
+    state.runs[i] = {
+      pos: { r: opp.start.r, c: opp.start.c },
+      trail: [{ r: opp.start.r, c: opp.start.c }],
+      knownWalls: emptyWalls(),
+      moveCount: 0,
+      failCount: 0,
+      turnCount: 0,
+      finished: false,
+    };
+  }
+  state.currentPlayer = 0;
+  state.failMarker = null;
+  updateGameUI();
+  goto('game');
+
+  // 最初がAIならAIに動かしてもらう
+  if (state.players[state.currentPlayer].isAI) {
+    setTimeout(aiTakeTurn, 800);
+  }
+}
+
+function updateGameUI() {
+  const p = state.players[state.currentPlayer];
+  const opponent = state.players[1 - state.currentPlayer];
+  const run = state.runs[state.currentPlayer];
+
+  const indicator = document.getElementById('turn-indicator');
+  indicator.textContent = `${p.name} のターン`;
+  indicator.classList.remove('red', 'blue');
+  indicator.classList.add(p.color);
+
+  document.getElementById('game-board-title').textContent = `— ${opponent.name} の迷宮 —`;
+  document.getElementById('move-count').textContent = run.moveCount;
+  document.getElementById('fail-count').textContent = run.failCount;
+
+  renderGameBoard();
+}
+
+function renderGameBoard() {
+  const svg = document.getElementById('game-board');
+  const opponent = state.players[1 - state.currentPlayer];
+  const run = state.runs[state.currentPlayer];
+  const player = state.players[state.currentPlayer];
+
+  svg.innerHTML = renderBoardSVG({
+    walls: run.knownWalls,         // 判明した壁のみ表示
+    showWalls: true,
+    start: opponent.start,         // 相手の迷宮のスタート/ゴール
+    goal: opponent.goal,
+    playerPos: run.pos,
+    playerColor: player.color,
+    trail: run.trail,
+    interactive: 'cells',
+    failMarker: state.failMarker,
+  });
+  attachGameHandlers(svg);
+}
+
+function attachGameHandlers(svg) {
+  if (state.players[state.currentPlayer].isAI) return; // AIのターンは操作不可
+
+  svg.querySelectorAll('.cell-clickable').forEach(el => {
+    el.addEventListener('click', () => {
+      const r = parseInt(el.dataset.r);
+      const c = parseInt(el.dataset.c);
+      attemptMove(r, c);
+    });
+  });
+}
+
+function attemptMove(toR, toC) {
+  const playerIdx = state.currentPlayer;
+  const run = state.runs[playerIdx];
+  if (run.finished) return;
+
+  const fromR = run.pos.r, fromC = run.pos.c;
+  // 隣接チェック
+  const dr = toR - fromR, dc = toC - fromC;
+  if (Math.abs(dr) + Math.abs(dc) !== 1) {
+    flashMessage('隣接するマスのみ移動できます', 'fail');
+    return;
+  }
+
+  const opponentWalls = state.players[1 - playerIdx].walls;
+  const blocked = isWallBetween(opponentWalls, fromR, fromC, toR, toC);
+
+  if (blocked) {
+    // 失敗 → その壁を判明扱いに、ターン交代
+    addWallBetween(run.knownWalls, fromR, fromC, toR, toC);
+    run.failCount++;
+    state.failMarker = { from: { r: fromR, c: fromC }, to: { r: toR, c: toC } };
+    flashMessage(`壁にぶつかりました！`, 'fail');
+    setTimeout(() => {
+      state.failMarker = null;
+      run.turnCount++;
+      switchTurn();
+    }, 900);
+    renderGameBoard();
+  } else {
+    // 成功 → 移動、続けて宣言可
+    run.pos = { r: toR, c: toC };
+    run.trail.push({ r: toR, c: toC });
+    run.moveCount++;
+    flashMessage('移動成功 - 続けて宣言できます', 'success');
+
+    // ゴール判定（相手の迷宮のゴール）
+    const goal = state.players[1 - playerIdx].goal;
+    if (toR === goal.r && toC === goal.c) {
+      run.finished = true;
+      run.turnCount++;
+      setTimeout(() => endGame(playerIdx), 600);
+      renderGameBoard();
+      return;
+    }
+    renderGameBoard();
+  }
+}
+
+function addWallBetween(walls, fromR, fromC, toR, toC) {
+  if (toR === fromR && toC === fromC + 1) addWall(walls, 'v', fromR, fromC + 1);
+  else if (toR === fromR && toC === fromC - 1) addWall(walls, 'v', fromR, fromC);
+  else if (toR === fromR + 1 && toC === fromC) addWall(walls, 'h', fromR + 1, fromC);
+  else if (toR === fromR - 1 && toC === fromC) addWall(walls, 'h', fromR, fromC);
+}
+
+function switchTurn() {
+  state.currentPlayer = 1 - state.currentPlayer;
+  state.failMarker = null;
+  updateGameUI();
+  if (state.players[state.currentPlayer].isAI && !state.runs[state.currentPlayer].finished) {
+    setTimeout(aiTakeTurn, 1000);
+  }
+}
+
+function flashMessage(text, type = '') {
+  const m = document.getElementById('game-message');
+  m.textContent = text;
+  m.className = 'message ' + type;
+}
+
+// ==========================================================================
+//  AI: 移動
+// ==========================================================================
+
+function aiTakeTurn() {
+  const playerIdx = state.currentPlayer;
+  const run = state.runs[playerIdx];
+  if (run.finished) return;
+
+  const player = state.players[playerIdx];
+  const opponentWalls = state.players[1 - playerIdx].walls;
+
+  // AI のレベル別戦略
+  // 共通: 知っている壁から推定して、ゴールへの最短経路を辿る
+  // easy: ランダム性高め、たまに知ってる壁にも突っ込む
+  // normal: 知っている壁を回避してBFS
+  // hard: normalと同じ + 経路上で確実なマスを優先
+
+  const goal = state.players[1 - playerIdx].goal;
+  const move = decideAIMove(playerIdx, run, opponentWalls);
+
+  if (!move) {
+    // 詰み（理論上起きないが）→ 投了
+    setTimeout(() => switchTurn(), 500);
+    return;
+  }
+
+  // 移動を実行（人間と同じ処理を流す）
+  const flashLog = (msg, type) => {
+    flashMessage(`🤖 ${player.name}: 「${move.r},${move.c} へ移動」 ${msg}`, type);
+  };
+
+  const fromR = run.pos.r, fromC = run.pos.c;
+  const blocked = isWallBetween(opponentWalls, fromR, fromC, move.r, move.c);
+
+  if (blocked) {
+    addWallBetween(run.knownWalls, fromR, fromC, move.r, move.c);
+    run.failCount++;
+    state.failMarker = { from: { r: fromR, c: fromC }, to: { r: move.r, c: move.c } };
+    flashLog('— 壁でした！', 'fail');
+    renderGameBoard();
+    setTimeout(() => {
+      state.failMarker = null;
+      run.turnCount++;
+      switchTurn();
+    }, 1100);
+  } else {
+    run.pos = { r: move.r, c: move.c };
+    run.trail.push({ r: move.r, c: move.c });
+    run.moveCount++;
+    flashLog('— 通れた！', 'success');
+    renderGameBoard();
+
+    if (move.r === goal.r && move.c === goal.c) {
+      run.finished = true;
+      run.turnCount++;
+      setTimeout(() => endGame(playerIdx), 700);
+      return;
+    }
+    // 続けて移動可能 → 次の手を考える
+    setTimeout(aiTakeTurn, 900);
+  }
+}
+
+function decideAIMove(playerIdx, run, opponentWalls) {
+  const player = state.players[playerIdx];
+  const goal = state.players[1 - playerIdx].goal;
+  const { r, c } = run.pos;
+
+  // 候補: 上下左右の隣接マス（盤外と既知の壁を除外）
+  const candidates = [];
+  for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+    const nr = r + dr, nc = c + dc;
+    if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
+    if (isWallBetween(run.knownWalls, r, c, nr, nc)) continue; // 既知の壁は避ける
+    candidates.push({ r: nr, c: nc, dr, dc });
+  }
+
+  if (candidates.length === 0) {
+    // 詰み（既知の壁で囲まれた）→ 仕方なく既知の壁に突っ込む
+    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
+      candidates.push({ r: nr, c: nc, dr, dc });
+    }
+    if (candidates.length === 0) return null;
+  }
+
+  // easy: ランダム性高い
+  if (state.mode === 'pvc-easy') {
+    if (Math.random() < 0.5) {
+      return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+    // 残り50%は素朴にゴールへ近づく方向
+  }
+
+  // normal/hard: 既知の壁マップで最短経路を計算
+  const path = bfsPath(run.knownWalls, r, c, goal.r, goal.c);
+  if (path && path.length >= 2) {
+    const next = path[1];
+    // hard: 既知の壁ベースの経路をそのまま採用
+    if (state.mode === 'pvc-hard') return { r: next[0], c: next[1] };
+
+    // normal: 80%でBFS経路、20%で別候補（探索性）
+    if (Math.random() < 0.8) return { r: next[0], c: next[1] };
+  }
+
+  // 候補をゴール距離でソート
+  candidates.forEach(cand => {
+    cand.dist = Math.abs(cand.r - goal.r) + Math.abs(cand.c - goal.c);
+    // 既に通った場所は若干避ける
+    const visitedCount = run.trail.filter(t => t.r === cand.r && t.c === cand.c).length;
+    cand.dist += visitedCount * 0.3;
+  });
+  candidates.sort((a, b) => a.dist - b.dist);
+
+  // easy: たまに悪手
+  if (state.mode === 'pvc-easy' && Math.random() < 0.3) {
+    return candidates[Math.min(candidates.length - 1, 1 + Math.floor(Math.random() * (candidates.length - 1)))];
+  }
+
+  return candidates[0];
+}
+
+// ==========================================================================
+//  終了処理
+// ==========================================================================
+
+function endGame(winnerIdx) {
+  const winner = state.players[winnerIdx];
+  const winnerRun = state.runs[winnerIdx];
+  document.getElementById('winner-name').textContent = winner.name;
+  document.getElementById('stat-moves').textContent = winnerRun.moveCount;
+  document.getElementById('stat-fails').textContent = winnerRun.failCount;
+  document.getElementById('stat-turns').textContent = winnerRun.turnCount;
+
+  // コメント
+  let comment = '';
+  if (winnerRun.failCount === 0) comment = '一度も壁にぶつからず完全制覇！見事な読みです。';
+  else if (winnerRun.failCount <= 2) comment = '少ないミスで効率的に到達しました。';
+  else if (winnerRun.failCount >= 8) comment = '何度もぶつかりながらも、執念で勝利を掴みました。';
+  else comment = 'バランスのとれた攻略でした。';
+  document.getElementById('victory-comment').textContent = comment;
+
+  // 勝者が攻略した迷宮（相手の壁）と勝者の足跡を表示
+  const opponent = state.players[1 - winnerIdx];
+  const svg = document.getElementById('victory-board');
+  svg.innerHTML = renderBoardSVG({
+    walls: opponent.walls,
+    showWalls: true,
+    start: opponent.start,         // 攻略した迷宮（相手）のスタート/ゴール
+    goal: opponent.goal,
+    playerPos: winnerRun.pos,
+    playerColor: winner.color,
+    trail: winnerRun.trail,
+    interactive: 'none',
+    revealAll: true,
+  });
+
+  goto('victory');
+}
+
+// ==========================================================================
+//  描画 (SVG生成)
+// ==========================================================================
+
+function renderBoardSVG({ walls, showWalls, start, goal, playerPos, playerColor, trail, interactive, failMarker, revealAll }) {
+  let svg = '';
+
+  // 紙の罫線（うっすら背景）
+  svg += `<defs>
+    <pattern id="grid-paper" width="${CELL/4}" height="${CELL/4}" patternUnits="userSpaceOnUse">
+      <path d="M ${CELL/4} 0 L 0 0 0 ${CELL/4}" fill="none" stroke="rgba(43,36,23,0.05)" stroke-width="0.5"/>
+    </pattern>
+  </defs>`;
+  svg += `<rect x="0" y="0" width="${SVG_SIZE}" height="${SVG_SIZE}" fill="url(#grid-paper)"/>`;
+
+  // セル背景
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const x = PADDING + c * CELL;
+      const y = PADDING + r * CELL;
+      const isStart = start && start.r === r && start.c === c;
+      const isGoal  = goal && goal.r === r && goal.c === c;
+      let bg = 'var(--paper)';
+      if (isStart) bg = 'rgba(184, 49, 47, 0.12)';
+      else if (isGoal) bg = 'rgba(42, 77, 142, 0.12)';
+
+      const cellAttr = interactive === 'cells'
+        ? `class="cell-clickable" data-r="${r}" data-c="${c}" style="cursor:pointer;"`
+        : '';
+
+      svg += `<g ${cellAttr}>`;
+      svg += `<rect class="cell-bg" x="${x}" y="${y}" width="${CELL}" height="${CELL}" fill="${bg}" stroke="var(--grid-line)" stroke-width="1"/>`;
+      if (isStart) {
+        svg += `<text class="marker-text" x="${x + CELL/2}" y="${y + CELL/2}" font-size="${CELL*0.45}" fill="var(--red)">S</text>`;
+      }
+      if (isGoal) {
+        svg += `<text class="marker-text" x="${x + CELL/2}" y="${y + CELL/2}" font-size="${CELL*0.45}" fill="var(--blue)">G</text>`;
+      }
+      svg += `</g>`;
+    }
+  }
+
+  // 軌跡（trail）の点線
+  if (trail && trail.length > 1) {
+    let pathD = '';
+    trail.forEach((p, i) => {
+      const cx = PADDING + p.c * CELL + CELL / 2;
+      const cy = PADDING + p.r * CELL + CELL / 2;
+      pathD += (i === 0 ? `M ${cx} ${cy}` : ` L ${cx} ${cy}`);
+    });
+    svg += `<path d="${pathD}" fill="none" stroke="var(--ink-faded)" stroke-width="2" stroke-dasharray="4,4" opacity="0.5"/>`;
+    // 通過点
+    trail.forEach((p, i) => {
+      if (i === trail.length - 1) return;
+      const cx = PADDING + p.c * CELL + CELL / 2;
+      const cy = PADDING + p.r * CELL + CELL / 2;
+      svg += `<circle class="trail-dot" cx="${cx}" cy="${cy}" r="3"/>`;
+    });
+  }
+
+  // 外周
+  svg += `<rect x="${PADDING}" y="${PADDING}" width="${CELL*N}" height="${CELL*N}" fill="none" stroke="var(--ink)" stroke-width="3"/>`;
+
+  // 壁の描画
+  if (showWalls && walls) {
+    walls.h.forEach(w => {
+      const x1 = PADDING + w.c * CELL;
+      const x2 = x1 + CELL;
+      const y = PADDING + w.r * CELL;
+      const cls = revealAll ? 'wall-line revealed' : 'wall-line mine';
+      svg += `<line class="${cls}" x1="${x1}" y1="${y}" x2="${x2}" y2="${y}"/>`;
+    });
+    walls.v.forEach(w => {
+      const x = PADDING + w.c * CELL;
+      const y1 = PADDING + w.r * CELL;
+      const y2 = y1 + CELL;
+      const cls = revealAll ? 'wall-line revealed' : 'wall-line mine';
+      svg += `<line class="${cls}" x1="${x}" y1="${y1}" x2="${x}" y2="${y2}"/>`;
+    });
+  }
+
+  // 壁配置モード: クリック領域
+  if (interactive === 'walls') {
+    // 水平壁ターゲット (内部のみ: r=1..N-1)
+    for (let r = 1; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        const x1 = PADDING + c * CELL;
+        const x2 = x1 + CELL;
+        const y = PADDING + r * CELL;
+        const exists = hasWall(walls, 'h', r, c);
+        const stroke = exists ? 'var(--ink)' : 'rgba(43, 36, 23, 0.0)';
+        const sw = exists ? 4 : 12;
+        svg += `<line class="wall-target" data-type="h" data-r="${r}" data-c="${c}" x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" style="cursor:pointer;" opacity="${exists ? 1 : 0.001}"/>`;
+        // hover領域（透明な太い線）
+        svg += `<line class="wall-target" data-type="h" data-r="${r}" data-c="${c}" x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="transparent" stroke-width="14" style="cursor:pointer;"/>`;
+      }
+    }
+    // 垂直壁ターゲット
+    for (let r = 0; r < N; r++) {
+      for (let c = 1; c < N; c++) {
+        const x = PADDING + c * CELL;
+        const y1 = PADDING + r * CELL;
+        const y2 = y1 + CELL;
+        const exists = hasWall(walls, 'v', r, c);
+        const stroke = exists ? 'var(--ink)' : 'rgba(43, 36, 23, 0.0)';
+        const sw = exists ? 4 : 12;
+        svg += `<line class="wall-target" data-type="v" data-r="${r}" data-c="${c}" x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" style="cursor:pointer;" opacity="${exists ? 1 : 0.001}"/>`;
+        svg += `<line class="wall-target" data-type="v" data-r="${r}" data-c="${c}" x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="transparent" stroke-width="14" style="cursor:pointer;"/>`;
+      }
+    }
+  }
+
+  // 失敗マーカー（×）
+  if (failMarker) {
+    const { from, to } = failMarker;
+    let cx, cy;
+    if (from.r === to.r) {
+      // 横移動 → 縦壁の中央
+      cx = PADDING + Math.max(from.c, to.c) * CELL;
+      cy = PADDING + from.r * CELL + CELL / 2;
+    } else {
+      // 縦移動 → 横壁の中央
+      cx = PADDING + from.c * CELL + CELL / 2;
+      cy = PADDING + Math.max(from.r, to.r) * CELL;
+    }
+    const s = 10;
+    svg += `<line class="fail-x" x1="${cx-s}" y1="${cy-s}" x2="${cx+s}" y2="${cy+s}"/>`;
+    svg += `<line class="fail-x" x1="${cx-s}" y1="${cy+s}" x2="${cx+s}" y2="${cy-s}"/>`;
+  }
+
+  // プレイヤートークン
+  if (playerPos) {
+    const cx = PADDING + playerPos.c * CELL + CELL / 2;
+    const cy = PADDING + playerPos.r * CELL + CELL / 2;
+    const color = playerColor === 'red' ? 'var(--red)' : 'var(--blue)';
+    svg += `<g class="player-token">`;
+    svg += `<circle cx="${cx}" cy="${cy}" r="${CELL*0.32}" fill="${color}" opacity="0.85" stroke="var(--ink)" stroke-width="2"/>`;
+    svg += `<circle cx="${cx-3}" cy="${cy-3}" r="${CELL*0.1}" fill="rgba(255,255,255,0.4)"/>`;
+    svg += `</g>`;
+  }
+
+  return svg;
+}
+
+// ==========================================================================
+//  ゲーム画面ボタン
+// ==========================================================================
+
+document.getElementById('game-restart-btn').addEventListener('click', () => {
+  showModal('最初からやり直す？', '現在の進行状況は失われます。', () => {
+    startGame();
+  });
+});
+
+document.getElementById('game-quit-btn').addEventListener('click', () => {
+  showModal('投了しますか？', `${state.players[1 - state.currentPlayer].name} の勝利となります。`, () => {
+    endGame(1 - state.currentPlayer);
+  });
+});
+
+document.getElementById('victory-rematch-btn').addEventListener('click', () => {
+  // 再戦: 設定画面へ
+  goto('config');
+});
+
+// ==========================================================================
+//  モーダル
+// ==========================================================================
+
+function showModal(title, body, onOk) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').textContent = body;
+  document.getElementById('modal').classList.add('active');
+  document.getElementById('modal-ok').onclick = () => {
+    document.getElementById('modal').classList.remove('active');
+    onOk && onOk();
+  };
+}
+document.getElementById('modal-cancel').addEventListener('click', () => {
+  document.getElementById('modal').classList.remove('active');
+});
+
+</script>
+</body>
+</html>
